@@ -1,0 +1,751 @@
+library(tidyverse)
+library(eiopt2)
+# library(ei)
+# library(eiPack)
+library(ggalluvial)
+library(MetBrewer)
+library(RColorBrewer)
+library(hrbrthemes)
+
+palette_alluvial <- hrbrthemes::flexoki_dark
+names(palette_alluvial) <- NULL
+
+codigo_nombre <- read_delim("Servel_20211121_PRESIDENCIALES_SEGUNDA_VUELTA_NAC.zip", delim = ";")
+codigo_comuna <- select(
+  codigo_nombre,
+  id_comuna = comuna_id,
+  comuna = comuna_nombre
+) %>%
+  distinct() %>%
+  mutate(
+    comuna = str_trim(comuna),
+    id_comuna = factor(id_comuna),
+  )
+rm(codigo_nombre)
+gc()
+
+primera_vuelta <- read_csv("primera_vuelta.csv")
+primera_vuelta[is.na(primera_vuelta)] <- 0
+primera_vuelta <- primera_vuelta %>%
+  filter(electores > total_general) %>% # Filtrar errores
+  mutate(
+    id_comuna = factor(id_comuna),
+    id_local = factor(id_local),
+    id_mesa = factor(id_mesa),
+    ausente = electores - total_general
+  ) %>%
+  select(
+    id_comuna,
+    id_local,
+    id_mesa,
+    ausente,
+    blancos,
+    nulos,
+    matthei = Matthei,
+    hmn = HMN,
+    parisi = Parisi,
+    meo = MEO,
+    kaiser = Kaiser,
+    kast = Kast,
+    jara = Jara,
+    artes = Artes,
+    electores,
+    total_general
+  ) %>%
+  mutate(
+    otros = hmn + meo + artes,
+    nulos_blancos = nulos + blancos
+  ) %>%
+  select(
+    -meo,
+    -hmn,
+    -artes,
+    -nulos,
+    -blancos
+  ) %>%
+  group_by() %>%
+  left_join(
+    codigo_comuna
+  ) %>%
+  select(-id_comuna)
+
+primera_vuelta
+segunda_vuelta <- read_csv("segunda_vuelta.csv")
+segunda_vuelta[is.na(segunda_vuelta)] <- 0
+segunda_vuelta <- segunda_vuelta %>%
+  filter(total_general < electores) %>%
+  mutate(
+    id_comuna = factor(id_comuna),
+    id_local = factor(id_local),
+    id_mesa = factor(id_mesa),
+    ausente_2 = electores - total_general
+  ) %>%
+  rename(
+    blancos_2 = blancos,
+    nulos_2 = nulos,
+    kast_2 = Kast,
+    jara_2 = Jara
+  ) %>%
+  select(
+    id_comuna,
+    id_mesa,
+    ausente_2,
+    blancos_2,
+    nulos_2,
+    kast_2,
+    jara_2
+  ) %>%
+  mutate(nulos_blancos_2 = nulos_2 + blancos_2) %>%
+  select(-blancos_2, -nulos_2) %>%
+  # group_by() %>%
+  left_join(codigo_comuna) %>%
+  select(-id_comuna)
+segunda_vuelta
+
+ambas_vueltas <- left_join(primera_vuelta, segunda_vuelta) %>%
+  select(-total_general) %>%
+  mutate(
+    total_1 = nulos_blancos + kast + jara + parisi + otros + matthei + kaiser,
+    total_2 = nulos_blancos_2 + kast_2 + jara_2,
+    ausente = electores - total_1,
+    ausente_2 = electores - total_2
+  ) # %>%
+
+ambas_vueltas <- data.frame(ambas_vueltas)
+
+rm(primera_vuelta)
+rm(segunda_vuelta)
+gc()
+# NO FUNCIONAN: ANTOFAGASTA, CONCEPCION, COMUNAS CON MENOS DE 10 mesas?
+analizar_comuna <- function(nombre_comuna) {
+  datos_comuna <- filter(ambas_vueltas, comuna == nombre_comuna)
+  n_original <- nrow(datos_comuna)
+  while (nrow(datos_comuna) > 100) {
+    if (nrow(datos_comuna) %% 25 == 0) {
+      print(
+        str_c(
+          "Consolidando mesas, ",
+          nrow(datos_comuna),
+          " restantes"
+        )
+      )
+    }
+
+    mayor_local <- datos_comuna %>%
+      group_by(id_local) %>%
+      tally() %>%
+      arrange(desc(n)) %>%
+      head(1) %>%
+      .$id_local
+    # print(mayor_local)
+    menores_mesas <- datos_comuna %>%
+      filter(id_local == mayor_local) %>%
+      arrange(total_2) %>%
+      head(2) %>%
+      .$id_mesa
+    # print(menores_mesas)
+    menores_mesas_consolidadas <- datos_comuna %>%
+      filter(id_mesa %in% menores_mesas) %>%
+      summarize_if(is.numeric, sum)
+    menores_mesas_consolidadas$id_local <- mayor_local[[1]]
+    menores_mesas_consolidadas$id_mesa <- sample(menores_mesas, 1)
+    # print(menores_mesas_consolidadas)
+    datos_comuna <- datos_comuna %>%
+      filter(!(id_mesa %in% menores_mesas)) %>%
+      bind_rows(menores_mesas_consolidadas)
+  }
+  n_consolidado <- nrow(datos_comuna)
+  primera_vuelta <- datos_comuna %>%
+    select(
+      ausente,
+      matthei,
+      parisi,
+      kaiser,
+      kast,
+      jara,
+      otros,
+      nulos_blancos
+    )
+  segunda_vuelta <- datos_comuna %>%
+    select(
+      ausente = ausente_2,
+      nulos_blancos = nulos_blancos_2,
+      kast = kast_2,
+      jara = jara_2
+    )
+  ei_comuna <- eiopt2(
+    primera_vuelta,
+    segunda_vuelta,
+    census.changes = "adjust2",
+    trace = TRUE
+  )
+  vtm_comuna <- ei_comuna$VTM.votes %>%
+    data.frame() %>%
+    rownames_to_column(var = "opcion_1_vuelta") %>%
+    pivot_longer(
+      -opcion_1_vuelta,
+      names_to = "opcion_2_vuelta",
+      values_to = "prop_votos"
+    )
+  vtm_comuna$opcion_1_vuelta <- factor(
+    vtm_comuna$opcion_1_vuelta,
+    levels = c(
+      "jara",
+      "parisi",
+      "matthei",
+      "kast",
+      "kaiser",
+      "otros",
+      "nulos_blancos",
+      "ausente"
+    ),
+    labels = c(
+      "Jara",
+      "Parisi",
+      "Matthei",
+      "Kast",
+      "Kaiser",
+      "Otros",
+      "Nulos/Blancos",
+      "Ausente"
+    )
+  )
+  vtm_comuna$opcion_2_vuelta <- factor(
+    vtm_comuna$opcion_2_vuelta,
+    levels = c(
+      "jara",
+      "kast",
+      "nulos_blancos",
+      "ausente"
+    ),
+    labels = c(
+      "Jara",
+      "Kast",
+      "Nulos/Blancos",
+      "Ausente"
+    )
+  )
+  flujo_comuna <- ggplot(
+    vtm_comuna,
+    aes(
+      axis1 = opcion_1_vuelta,
+      axis2 = opcion_2_vuelta,
+      y = prop_votos
+    )
+  ) +
+    geom_alluvium(aes(fill = opcion_1_vuelta)) +
+    geom_stratum() +
+    geom_text(
+      stat = "stratum",
+      aes(label = after_stat(stratum))
+    ) +
+    scale_x_discrete(
+      name = "Elección",
+      limits = c("Primera vuelta", "Segunda vuelta")
+    ) +
+    labs(
+      title = str_c(
+        "Flujo de votos para ",
+        str_to_title(nombre_comuna)
+      ),
+      subtitle = str_c(
+        "Numero de mesas: ",
+        nrow(datos_comuna)
+      ),
+      y = "Votos"
+    ) +
+    hrbrthemes::theme_ipsum_rc() +
+    scale_fill_manual(
+      values = c(
+        Jara = palette_alluvial[1],
+        Kast = palette_alluvial[5],
+        Kaiser = palette_alluvial[6],
+        Matthei = palette_alluvial[4],
+        Parisi = palette_alluvial[2],
+        Otros = palette_alluvial[3],
+        "Nulos/Blancos" = palette_alluvial[7],
+        Ausente = palette_alluvial[8]
+      )
+    ) +
+    theme(
+      legend.position = "none",
+      axis.title.y = element_blank(),
+      axis.text.y = element_blank(),
+      panel.grid = element_blank(),
+      axis.title.x = element_text(
+        size = 20
+      )
+    )
+  ggsave(
+    str_c(
+      "flujos/",
+      str_to_snake(nombre_comuna),
+      "_flujo.png"
+    ),
+    flujo_comuna,
+    bg = "white", width = 8,
+    height = 10
+  )
+  ptm_comuna <- ei_comuna$VTM %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "vuelta_1") %>%
+    pivot_longer(
+      -vuelta_1,
+      names_to = "vuelta_2",
+      values_to = "prop_votos"
+    )
+  ptm_comuna$vuelta_1 <- factor(
+    ptm_comuna$vuelta_1,
+    levels = c(
+      "ausente",
+      "nulos_blancos",
+      "otros",
+      "kaiser",
+      "kast",
+      "matthei",
+      "parisi",
+      "jara"
+    ),
+    labels = c(
+      "Ausente",
+      "Nulos\nBlancos",
+      "Otros",
+      "Kaiser",
+      "Kast",
+      "Matthei",
+      "Parisi",
+      "Jara"
+    )
+  )
+  ptm_comuna$vuelta_2 <- factor(
+    ptm_comuna$vuelta_2,
+    levels = c(
+      "ausente",
+      "nulos_blancos",
+      "kast",
+      "jara"
+    ),
+    labels = c(
+      "Ausente",
+      "Nulos/Blancos",
+      "Kast",
+      "Jara"
+    )
+  )
+  matriz_comuna <- ptm_comuna %>%
+    ggplot(
+      aes(
+        x = vuelta_1,
+        y = vuelta_2,
+        fill = prop_votos,
+        label = round(prop_votos, digits = 1)
+      )
+    ) +
+    geom_tile(color = "black") +
+    geom_text(size = 6) +
+    scale_fill_gradientn(colours = brewer.pal(n = 8, name = "OrRd")) +
+    hrbrthemes::theme_ipsum_rc() +
+    labs(
+      title = str_c(
+        "Matriz de traspaso de votos para ",
+        str_to_title(nombre_comuna)
+      ),
+      subtitle = str_c(
+        "Numero de mesas: ",
+        nrow(datos_comuna)
+      ),
+      x = "Primera vuelta",
+      y = "Segunda vuelta"
+    ) +
+    theme(
+      legend.position = "none",
+      axis.title.x = element_text(size = 14),
+      axis.text.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
+      axis.text.y = element_text(size = 14)
+    )
+  ggsave(
+    str_c(
+      "matrices/",
+      str_to_snake(nombre_comuna),
+      "_matriz.png"
+    ),
+    width = 10,
+    height = 6,
+    bg = "white",
+    dpi = 300
+  )
+  vtm_wide <- ei_comuna$VTM.votes %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "vuelta_1") %>%
+    mutate(
+      vuelta_1 = ifelse(
+        vuelta_1 == "nulos_blancos",
+        "nulosblancos",
+        vuelta_1
+      )
+    ) %>%
+    rename(
+      ausente2 = ausente,
+      nulosblancos2 = nulos_blancos,
+      kast2 = kast,
+      jara2 = jara
+    ) %>%
+    pivot_wider(
+      names_from = vuelta_1,
+      values_from = c(
+        ausente2,
+        nulosblancos2,
+        kast2,
+        jara2
+      ) # Sin snakecase para dividirlo después por "_"
+    ) %>%
+    mutate_if(is.numeric, round)
+  vtm_wide$comuna <- nombre_comuna
+  vtm_wide$n_original <- n_original
+  vtm_wide$n_consolidado <- n_consolidado
+  write_csv(
+    vtm_wide,
+    str_c(
+      "vtm/",
+      str_to_snake(nombre_comuna),
+      "_vtm.csv"
+    )
+  )
+
+  ptm_wide <- ei_comuna$VTM %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "vuelta_1") %>%
+    mutate(
+      vuelta_1 = ifelse(
+        vuelta_1 == "nulos_blancos",
+        "nulosblancos",
+        vuelta_1
+      )
+    ) %>%
+    rename(
+      ausente2 = ausente,
+      nulosblancos2 = nulos_blancos,
+      kast2 = kast,
+      jara2 = jara
+    ) %>%
+    pivot_wider(
+      names_from = vuelta_1,
+      values_from = c(ausente2, nulosblancos2, kast2, jara2)
+    ) %>%
+    mutate_if(is.numeric, round, digits = 3)
+  ptm_wide$comuna <- nombre_comuna
+  ptm_wide$n_original <- n_original
+  ptm_wide$n_consolidado <- n_consolidado
+  write_csv(
+    ptm_wide,
+    str_c(
+      "ptm/",
+      str_to_snake(nombre_comuna),
+      "_ptm.csv"
+    )
+  )
+}
+
+for (comuna in codigo_comuna$comuna) {
+  print(comuna)
+  tryCatch(
+    {
+      analizar_comuna(comuna)
+    },
+    error = function(e) {
+      write(
+        comuna,
+        file = "comunas_problema.txt",
+        append = TRUE
+      )
+      write("\n")
+      write(
+        as.character(e),
+        file = "comunas_problema.txt",
+        append = TRUE
+      )
+      write(
+        "\n######\n",
+        file = "comunas_problema.txt",
+        append = TRUE
+      )
+    }
+  )
+}
+
+# TODO: guardar comunas problema en comunas_problema.txt
+
+# ABAJO: INTENTOS CON OTROS PAQUETES QUE SE DEDICAN A HACER INFERENCIA ECOLOGICA, EI, EIPACK, EICOMPARE
+
+# std_ambas_vueltas <- eiCompare::stdize_votes_all(ambas_vueltas,
+#   race_cols = c("nulos_blancos", "ausente", "kast", "jara", "matthei", "parisi", "kaiser", "otros"),
+#   cand_cols = c("nulos_blancos_2", "ausente_2", "kast_2", "jara_2"),
+#   totals_col = "electores",
+#   diagnostic = TRUE,
+#   new_names = FALSE
+# )
+# std_ambas_vueltas$parisi <- std_ambas_vueltas$race_deviates
+# library(eiCompare)
+# data("gwinnett_ei")
+#
+# # ambas_vueltas <- std_ambas_vueltas %>%
+# #   select(-id_comuna) %>%
+# #   as.data.frame()
+#
+# ei_iter(
+#   data = gwinnett_ei,
+#   cand_cols = c("kemp", "abrams", "metz"),
+#   race_cols = c("white", "black", "other"),
+#   totals_col = "turnout"
+# )
+#
+# iter <- ei_iter(std_ambas_vueltas,
+#   cand_cols = c("nulos_blancos_2", "ausente_2", "kast_2", "jara_2"),
+#   race_cols = c("nulos_blancos", "ausente", "kast", "jara", "matthei", "parisi", "kaiser", "otros"),
+#   totals_col = "electores",
+#   par_compute = TRUE,
+#   # erho = 0.00001
+# )
+#
+# ggplot(iter$estimates, aes(axis1 = race, axis2 = cand, y = mean)) +
+#   geom_alluvium(aes(fill = race)) +
+#   geom_stratum() +
+#   geom_text(
+#     stat = "stratum",
+#     aes(label = after_stat(stratum))
+#   )
+#
+#
+# form <- formula(cbind(kast_2, jara_2, ausente_2, nulos_blancos_2) ~ cbind(nulos_blancos, ausente, kast, jara, matthei, parisi, kaiser, otros))
+#
+#
+# x <- ei.reg.bayes(form, data = ambas_vueltas, sample = 10000, truncate = FALSE, weights = NULL)
+#
+# y <- bayes_table_make(x, cand_vector = c("nulos_blancos_2", "ausente_2", "kast_2", "jara_2"), table_names = c("nulos_blancos", "ausente", "kast", "jara", "matthei", "parisi", "kaiser", "otros")) %>%
+#   filter(Candidate != "se") %>%
+#   filter(Candidate != "Total")
+# y %>%
+#   pivot_longer(-Candidate) %>%
+#   ggplot(aes(x = Candidate, y = name, fill = value, label = round(value))) +
+#   geom_tile() +
+#   geom_text()
+#
+#
+# x <- ei::ei(form, data = std_ambas_vueltas, sample = 10000, verbose = TRUE, total = "electores")
+# # Cada una de estas comunas es candidato_1_vuelta, candidato_2_vuelta, num_comuna
+# # El Beta es la proporción de ese traspaso
+# summary(x)
+# x$draws$Beta
+# x$draws$Beta[, "beta.jara.kast_2.32"] %>% summary()
+# x$draws$Alpha[, "alpha.kaiser.kast_2"] %>% summary()
+# # x$draws$Alpha
+# cell_counts <- x$draws$Cell.counts
+#
+# # Promedios del MCMC
+#
+# cell_counts %>%
+#   colMeans()
+#
+#
+# x <- ei.MD.bayes(form,
+#   data = ambas_vueltas, sample = 10000, verbose = TRUE,
+#   ret.beta = FALSE, ret.mcmc = FALSE
+# )
+#
+# lambda.MD(x, c("kast_2", "jara_2", "ausente_2", "nulos_blancos_2"), ret.mcmc = FALSE)
+#
+# votos <- y$draws$Cell.counts %>%
+#   data.frame() %>%
+#   rownames_to_column() %>%
+#   separate_wider_delim(rowname, delim = ".", names = c("vuelta_1", "vuelta_2")) %>%
+#   select(vuelta_1, vuelta_2, votos = Mean)
+#
+# ggplot(votos, aes(axis1 = vuelta_1, axis2 = vuelta_2, y = votos)) +
+#   geom_alluvium(aes(fill = vuelta_1)) +
+#   geom_stratum() +
+#   geom_text(
+#     stat = "stratum",
+#     aes(label = after_stat(stratum))
+#   )
+#
+# x$acc.ratios
+#
+# trace("ei_rxc", edit = TRUE)
+#
+# rxc <- ei_rxc(std_ambas_vueltas,
+#   cand_cols = c("nulos_blancos_2", "ausente_2", "kast_2", "jara_2"),
+#   race_cols = c("nulos_blancos", "ausente", "kast", "jara", "matthei", "parisi", "kaiser", "otros"),
+#   totals_col = "electores",
+# )
+# ambas_vueltas
+# opt_ei_2 <- eiopt2(
+#   mutate_all(data.frame(select(primera_vuelta, -id_comuna, -id_local, -electores)), function(x) {
+#     round(x / 10)
+#   }),
+#   mutate_all(data.frame(select(segunda_vuelta, -id_comuna, -id_local)), function(x) {
+#     round(x / 10)
+#   }),
+#   census.changes = "adjust2",
+#   trace = TRUE
+# )
+# vtm_gen <- opt_ei_2$VTM.votes %>%
+#   data.frame() %>%
+#   rownames_to_column(var = "opcion_1_vuelta") %>%
+#   pivot_longer(-opcion_1_vuelta, names_to = "opcion_2_vuelta", values_to = "prop_votos")
+#
+# ggplot(vtm_gen, aes(axis1 = opcion_1_vuelta, axis2 = opcion_2_vuelta, y = prop_votos)) +
+#   geom_alluvium(aes(fill = opcion_1_vuelta)) +
+#   geom_stratum() +
+#   geom_text(
+#     stat = "stratum",
+#     aes(label = after_stat(stratum))
+#   )
+#
+#
+# ambas_vueltas <- left_join(ambas_vueltas, codigo_comuna)
+# pivot_longer(as_tibble(opt_ei_2$VTM, ), cols = ausente_2:jara_2)
+#
+# x <- opt_ei_2$VTM.votes.units
+# x <- map(1:nrow(ambas_vueltas), function(y) {
+#   print(y)
+#   return(x[, , y])
+# })
+#
+# names(x) <- ambas_vueltas$comuna
+#
+# y <- opt_ei_2$VTM.units
+# y <- map(1:nrow(ambas_vueltas), function(x) {
+#   print(x)
+#   return(y[, , x])
+# })
+# names(y) <- ambas_vueltas$comuna
+# plot_comuna <- function(comuna, datos, datos_prop) {
+#   votos_comuna <- datos[[comuna]]
+#   props_comuna <- datos_prop[[comuna]]
+#   # print(votos_comuna)
+#   props_comuna
+#   votos_long <- votos_comuna %>%
+#     data.frame() %>%
+#     rownames_to_column(var = "opcion_1_vuelta") %>%
+#     pivot_longer(-opcion_1_vuelta, names_to = "opcion_2_vuelta", values_to = "prop_votos")
+#   props_long <- props_comuna %>%
+#     data.frame() %>%
+#     rownames_to_column(var = "opcion_1_vuelta") %>%
+#     pivot_longer(-opcion_1_vuelta, names_to = "opcion_2_vuelta", values_to = "prop_votos")
+#   plot_prop <- ggplot(props_long, aes(x = opcion_1_vuelta, y = opcion_2_vuelta, fill = prop_votos, label = round(prop_votos, digits = 2))) +
+#     geom_tile() +
+#     geom_text() +
+#     labs(title = str_c("Matriz de transición de ", comuna))
+#   plot_comuna <- ggplot(votos_long, aes(axis1 = opcion_1_vuelta, axis2 = opcion_2_vuelta, y = prop_votos)) +
+#     geom_alluvium(aes(fill = opcion_1_vuelta)) +
+#     geom_stratum() +
+#     geom_text(
+#       stat = "stratum",
+#       aes(label = after_stat(stratum))
+#     ) +
+#     labs(title = str_c("Flujo de votos de ", comuna))
+#   return(list(votos = plot_comuna, props = plot_prop))
+# }
+#
+# plot_comuna("IQUIQUE", x, y)
+#
+# x[["ANTOFAGASTA"]]
+#
+#
+#
+# # PURG ----
+#
+# #
+# # datos_primera <- cbind(
+# #   ambas_vueltas$blancos,
+# #   ambas_vueltas$nulos,
+# #   ambas_vueltas$matthei,
+# #   ambas_vueltas$hmn,
+# #   ambas_vueltas$parisi,
+# #   ambas_vueltas$meo,
+# #   ambas_vueltas$kaiser,
+# #   ambas_vueltas$kast,
+# #   ambas_vueltas$jara,
+# #   ambas_vueltas$artes,
+# #   ambas_vueltas$ausente
+# # )
+# # colnames(datos_primera) <- c("blancos", "nulos", "matthei", "hmn", "parisi", "meo", "kaiser", "kast", "jara", "artes", "ausente")
+# #
+# # datos_segunda <- cbind(
+# #   ambas_vueltas$blancos_2,
+# #   ambas_vueltas$nulos_2,
+# #   ambas_vueltas$kast_2,
+# #   ambas_vueltas$jara_2,
+# #   ambas_vueltas$ausente_2
+# # )
+# # colnames(datos_segunda) <- c("blancos", "nulos", "kast", "jara", "ausente")
+# #
+# # x <- ei(cbind(
+# #   ambas_vueltas$blancos,
+# #   ambas_vueltas$nulos,
+# #   ambas_vueltas$matthei,
+# #   ambas_vueltas$hmn,
+# #   ambas_vueltas$parisi,
+# #   ambas_vueltas$meo,
+# #   ambas_vueltas$kaiser,
+# #   ambas_vueltas$kast,
+# #   ambas_vueltas$jara,
+# #   ambas_vueltas$artes,
+# #   ambas_vueltas$ausente
+# # ) ~ cbind(
+# #   ambas_vueltas$blancos_2,
+# #   ambas_vueltas$nulos_2,
+# #   ambas_vueltas$kast_2,
+# #   ambas_vueltas$jara_2,
+# #   ambas_vueltas$ausente_2
+# # ), data = data.frame(ambas_vueltas), verbose = TRUE) # , total = "electores")
+# #
+# # eiPack::ei.reg(
+# #   formula = cbind(
+# #     ambas_vueltas$ausente,
+# #     ambas_vueltas$blancos,
+# #     ambas_vueltas$nulos,
+# #     ambas_vueltas$matthei,
+# #     ambas_vueltas$hmn,
+# #     ambas_vueltas$parisi,
+# #     ambas_vueltas$meo,
+# #     ambas_vueltas$kaiser,
+# #     ambas_vueltas$kast,
+# #     ambas_vueltas$jara,
+# #     ambas_vueltas$artes
+# #   ) ~ cbind(
+# #     ambas_vueltas$ausente_2,
+# #     ambas_vueltas$blancos_2,
+# #     ambas_vueltas$nulos_2,
+# #     ambas_vueltas$kast_2,
+# #     ambas_vueltas$jara_2
+# #   ),
+# #   data = ambas_vueltas
+# # )
+# #
+# # library(eiCompare)
+# #
+# # rxc <- ei_rxc(
+# #   data = ambas_vueltas,
+# #   cand_cols = c("ausente_2", "nulos_blancos_2", "kast_2", "jara_2"),
+# #   race_cols = c("ausente", "nulos_blancos", "matthei", "otros", "kaiser", "kast", "jara"),
+# #   totals_col = "electores",
+# #   name = "RxC EI",
+# #   verbose = TRUE
+# # )
+# #
+# # ests <- rxc$estimates
+#
+#
+# # total = "electores")
+#
+# # primera_vuelta_datos <- select(
+# #   primera_vuelta,
+# #   blancos,
+# #   nulos,
+# #   ausentes,
+# #
+# #
+#
+# # eiCompare::

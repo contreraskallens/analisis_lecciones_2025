@@ -1,0 +1,72 @@
+CAMIÑA
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+COLCHANE
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+ANTOFAGASTA
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+SIERRA GORDA
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+OLLAGUE
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+JUAN FERNANDEZ
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+VILLA ALEMANA
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+TALCA
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+SAN CLEMENTE
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+SAN RAFAEL
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+SAGRADA FAMILIA
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+CONCEPCION
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+

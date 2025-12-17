@@ -1,0 +1,22 @@
+[project]
+name = "scrape-servel"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "asyncio>=4.0.0",
+    "beautifulsoup4>=4.14.3",
+    "isal>=1.8.0",
+    "nest-asyncio>=1.6.0",
+    "pandas>=2.3.3",
+    "playwright>=1.57.0",
+    "rich>=14.2.0",
+    "selenium>=4.39.0",
+    "webdriver-manager>=4.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+]
