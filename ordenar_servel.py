@@ -1,9 +1,9 @@
 import json
 from typing import TypeAlias, cast
 
-import pandas as pd
+import pandas as pd  # pyright: ignore[reportMissingTypeStubs]
 from isal import igzip
-from rich import print
+# from rich import print
 
 PRIMERA_VUELTA: str = "primera_vuelta"
 SEGUNDA_VUELTA: str = "segunda_vuelta"
@@ -39,6 +39,14 @@ mesa: TypeAlias = dict[str, str | int | None | list[dict[str, int | None]]]
 
 
 def get_json_eleccion(nombre_archivo: str) -> list[mesa]:
+    """Descomprime y lee un archivo JSON obtenido del SERVEL.
+
+    Args:
+        nombre_archivo: El nombre del archivo .gz que contiene el objeto JSON.
+
+    Returns:
+
+    """
     with igzip.open(  # pyright: ignore[reportUnknownMemberType]
         nombre_archivo + ".json.gz", mode="rt", encoding="utf-8"
     ) as gzip_content:
@@ -48,6 +56,15 @@ def get_json_eleccion(nombre_archivo: str) -> list[mesa]:
 
 
 def get_info_mesa(dict_mesa: mesa) -> pd.Series:
+    """Obtén la información por mesa del SERVEL, reteniendo sólo KEEP_VARS.
+
+    Args:
+        dict_mesa: El diccionario con la estructura MESA (dict[str, str | int | None | list[dict[str, int | None]]]) a procesar.
+
+    Returns:
+        Una Serie de pandas con los datos relevantes y los votos por candidato.
+
+    """
     parsed: pd.Series = pd.Series(dict_mesa)
     info_mesa = cast(pd.Series, parsed[KEEP_VARS])
     dict_votos: dict[str, int] = {}
@@ -68,6 +85,14 @@ def get_info_mesa(dict_mesa: mesa) -> pd.Series:
 
 
 def get_eleccion_procesada(todas_mesas: list[mesa]) -> list[pd.Series]:
+    """Procesa todas las mesas de un archivo.
+
+    Args:
+        todas_mesas: Lista de informaciones por mesa.
+
+    Returns:
+        Una lista con la información por mesa procesada en Series de pandas.
+    """
     mesas_procesadas: list[pd.Series] = []
     for esta_mesa in todas_mesas:
         mesas_procesadas.append(get_info_mesa(esta_mesa))
@@ -75,6 +100,12 @@ def get_eleccion_procesada(todas_mesas: list[mesa]) -> list[pd.Series]:
 
 
 def save_mesas_juntas(info_mesas: list[pd.Series], nombre_archivo: str) -> None:
+    """Concatena y graba la información de mesas en un solo archivo.
+
+    Args:
+        info_mesas: Lista con información de mesas en forma de Series de pandas.
+        nombre_archivo: Nombre del archivo donde se guarda la información concatenada.
+    """
     all_votos = pd.concat(info_mesas, axis=1).T
     all_votos.to_csv(nombre_archivo)  # pyright: ignore[reportUnknownMemberType]
 

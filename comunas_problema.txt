@@ -70,3 +70,135 @@ Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments 
 
 ######
 
+HUALPEN
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+LOS ANGELES
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+GALVARINO
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+PUERTO MONTT
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+PALENA
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+LAGO VERDE
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+GUAITECAS
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+O'HIGGINS
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+TORTEL
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+LAGUNA BLANCA
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+RIO VERDE
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+SAN GREGORIO
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+CABO DE HORNOS(EX-NAVARINO)
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+ANTARTICA
+Error in weights[ii] * x1[ii, ] %*% t(x1[ii, ]): non-numeric argument to binary operator
+
+
+######
+
+PRIMAVERA
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+TIMAUKEL
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+TORRES DEL PAINE
+Error in quadprog::solve.QP(Dmat = GF$Q, dvec = GF$d.lin, Amat = t(AB$A), : matrix D in quadratic function is not positive definite!
+
+
+######
+
+HUECHURABA
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+MAIPU
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+PUENTE ALTO
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+SAN BERNARDO
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
+BUIN
+Error in if (min(x, y) < 0L) stop("Negative values are not allowed in arguments \"votes_election1\" and \"votes_election2\"."): missing value where TRUE/FALSE needed
+
+
+######
+
