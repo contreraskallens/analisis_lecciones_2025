@@ -10,7 +10,7 @@ library(hrbrthemes)
 palette_alluvial <- hrbrthemes::flexoki_dark
 names(palette_alluvial) <- NULL
 
-codigo_nombre <- read_delim("Servel_20211121_PRESIDENCIALES_SEGUNDA_VUELTA_NAC.zip", delim = ";")
+codigo_nombre <- read_delim("Servel_20211121_PRESIDENCIALES_SEGUNDA_VUELTA_NAC.csv.gz", delim = ";")
 codigo_comuna <- select(
   codigo_nombre,
   id_comuna = comuna_id,
@@ -109,16 +109,27 @@ ambas_vueltas <- left_join(primera_vuelta, segunda_vuelta) %>%
     total_2 = nulos_blancos_2 + kast_2 + jara_2,
     ausente = electores - total_1,
     ausente_2 = electores - total_2
-  ) # %>%
+  ) %>%
+  filter(
+    total_1 != 0,
+    total_2 != 0
+  )
+
+# %>%
 
 ambas_vueltas <- data.frame(ambas_vueltas)
 
 rm(primera_vuelta)
 rm(segunda_vuelta)
 gc()
-# NO FUNCIONAN: ANTOFAGASTA, CONCEPCION, COMUNAS CON MENOS DE 10 mesas?
+
+
 analizar_comuna <- function(nombre_comuna) {
-  datos_comuna <- filter(ambas_vueltas, comuna == nombre_comuna)
+  datos_comuna <- filter(ambas_vueltas, comuna == nombre_comuna) %>%
+    filter(
+      total_1 != 0,
+      total_2 != 0
+    )
   n_original <- nrow(datos_comuna)
   while (nrow(datos_comuna) > 100) {
     if (nrow(datos_comuna) %% 25 == 0) {
@@ -474,7 +485,33 @@ for (comuna in codigo_comuna$comuna) {
   )
 }
 
-# TODO: guardar comunas problema en comunas_problema.txt
+
+# NO FUNCIONAN: ANTOFAGASTA, CONCEPCION, COMUNAS CON MENOS DE 10 mesas?
+comunas_con_0 <- c(
+  "ANTOFAGASTA",
+  "VILLA ALEMANA",
+  "TALCA",
+  "SAN CLEMENTE",
+  "SAN RAFAEL",
+  "SAGRADA FAMILIA",
+  "CONCEPCION",
+  "HUALPEN",
+  "LOS ANGELES",
+  "GALVARINO",
+  "PUERTO MONTT",
+  "HUECHURABA",
+  "MAIPU",
+  "PUENTE ALTO",
+  "SAN BERNARDO",
+  "BUIN"
+)
+
+for (comuna in comunas_con_0) {
+  print(comuna)
+  analizar_comuna(comuna)
+}
+
+
 
 # ABAJO: INTENTOS CON OTROS PAQUETES QUE SE DEDICAN A HACER INFERENCIA ECOLOGICA, EI, EIPACK, EICOMPARE
 
