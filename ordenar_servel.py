@@ -113,8 +113,8 @@ def save_mesas_juntas(info_mesas: list[pd.Series], nombre_archivo: str) -> None:
 if __name__ == "__main__":
     primera_vuelta: list[mesa] = get_json_eleccion(PRIMERA_VUELTA)
     primera_vuelta_procesada: list[pd.Series] = get_eleccion_procesada(primera_vuelta)
-    save_mesas_juntas(primera_vuelta_procesada, "primera_vuelta.csv")
+    save_mesas_juntas(primera_vuelta_procesada, "datos/primera_vuelta.csv")
 
     segunda_vuelta: list[mesa] = get_json_eleccion(SEGUNDA_VUELTA)
     segunda_vuelta_procesada: list[pd.Series] = get_eleccion_procesada(segunda_vuelta)
-    save_mesas_juntas(segunda_vuelta_procesada, "segunda_vuelta.csv")
+    save_mesas_juntas(segunda_vuelta_procesada, "datos/segunda_vuelta.csv")

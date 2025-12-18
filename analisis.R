@@ -10,7 +10,7 @@ library(hrbrthemes)
 palette_alluvial <- hrbrthemes::flexoki_dark
 names(palette_alluvial) <- NULL
 
-codigo_nombre <- read_delim("Servel_20211121_PRESIDENCIALES_SEGUNDA_VUELTA_NAC.csv.gz", delim = ";")
+codigo_nombre <- read_delim("datos/Servel_20211121_PRESIDENCIALES_SEGUNDA_VUELTA_NAC.csv.gz", delim = ";")
 codigo_comuna <- select(
   codigo_nombre,
   id_comuna = comuna_id,
@@ -24,7 +24,7 @@ codigo_comuna <- select(
 rm(codigo_nombre)
 gc()
 
-primera_vuelta <- read_csv("primera_vuelta.csv")
+primera_vuelta <- read_csv("datos/primera_vuelta.csv")
 primera_vuelta[is.na(primera_vuelta)] <- 0
 primera_vuelta <- primera_vuelta %>%
   filter(electores > total_general) %>% # Filtrar errores
@@ -70,7 +70,7 @@ primera_vuelta <- primera_vuelta %>%
   select(-id_comuna)
 
 primera_vuelta
-segunda_vuelta <- read_csv("segunda_vuelta.csv")
+segunda_vuelta <- read_csv("datos/segunda_vuelta.csv")
 segunda_vuelta[is.na(segunda_vuelta)] <- 0
 segunda_vuelta <- segunda_vuelta %>%
   filter(total_general < electores) %>%
@@ -148,19 +148,16 @@ analizar_comuna <- function(nombre_comuna) {
       arrange(desc(n)) %>%
       head(1) %>%
       .$id_local
-    # print(mayor_local)
     menores_mesas <- datos_comuna %>%
       filter(id_local == mayor_local) %>%
       arrange(total_2) %>%
       head(2) %>%
       .$id_mesa
-    # print(menores_mesas)
     menores_mesas_consolidadas <- datos_comuna %>%
       filter(id_mesa %in% menores_mesas) %>%
       summarize_if(is.numeric, sum)
     menores_mesas_consolidadas$id_local <- mayor_local[[1]]
     menores_mesas_consolidadas$id_mesa <- sample(menores_mesas, 1)
-    # print(menores_mesas_consolidadas)
     datos_comuna <- datos_comuna %>%
       filter(!(id_mesa %in% menores_mesas)) %>%
       bind_rows(menores_mesas_consolidadas)
@@ -289,7 +286,7 @@ analizar_comuna <- function(nombre_comuna) {
     )
   ggsave(
     str_c(
-      "flujos/",
+      "flujos/por_comuna/",
       str_to_snake(nombre_comuna),
       "_flujo.png"
     ),
@@ -377,7 +374,7 @@ analizar_comuna <- function(nombre_comuna) {
     )
   ggsave(
     str_c(
-      "matrices/",
+      "matrices/por_comuna/",
       str_to_snake(nombre_comuna),
       "_matriz.png"
     ),
@@ -418,7 +415,7 @@ analizar_comuna <- function(nombre_comuna) {
   write_csv(
     vtm_wide,
     str_c(
-      "vtm/",
+      "vtm/por_comuna/",
       str_to_snake(nombre_comuna),
       "_vtm.csv"
     )
@@ -451,7 +448,7 @@ analizar_comuna <- function(nombre_comuna) {
   write_csv(
     ptm_wide,
     str_c(
-      "ptm/",
+      "ptm/por_comuna/",
       str_to_snake(nombre_comuna),
       "_ptm.csv"
     )
@@ -485,32 +482,17 @@ for (comuna in codigo_comuna$comuna) {
   )
 }
 
+vtm_comunas <- list.files("vtm/por_comuna/", full.names = TRUE)
+vtm_completo <- map_dfr(vtm_comunas, function(x) {
+  read_csv(x)
+})
+write_csv(vtm_completo, "vtm/vtm_completo.csv")
 
-# NO FUNCIONAN: ANTOFAGASTA, CONCEPCION, COMUNAS CON MENOS DE 10 mesas?
-comunas_con_0 <- c(
-  "ANTOFAGASTA",
-  "VILLA ALEMANA",
-  "TALCA",
-  "SAN CLEMENTE",
-  "SAN RAFAEL",
-  "SAGRADA FAMILIA",
-  "CONCEPCION",
-  "HUALPEN",
-  "LOS ANGELES",
-  "GALVARINO",
-  "PUERTO MONTT",
-  "HUECHURABA",
-  "MAIPU",
-  "PUENTE ALTO",
-  "SAN BERNARDO",
-  "BUIN"
-)
-
-for (comuna in comunas_con_0) {
-  print(comuna)
-  analizar_comuna(comuna)
-}
-
+ptm_comunas <- list.files("ptm/por_comuna/", full.names = TRUE)
+ptm_completo <- map_dfr(ptm_comunas, function(x) {
+  read_csv(x)
+})
+write_csv(ptm_completo, "ptm/ptm_completo.csv")
 
 
 # ABAJO: INTENTOS CON OTROS PAQUETES QUE SE DEDICAN A HACER INFERENCIA ECOLOGICA, EI, EIPACK, EICOMPARE
@@ -785,4 +767,3 @@ for (comuna in comunas_con_0) {
 # #
 # #
 #
-# # eiCompare::
